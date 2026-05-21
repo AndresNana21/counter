@@ -1,0 +1,123 @@
+---
+// src/components/Contador.astro
+// Nota: El código aquí arriba corre en el servidor al compilar, 
+// pero la lógica del juego necesita correr en el navegador del usuario.
+---
+
+<div class="contador-container">
+  <h2>ClickForge - Demo Contador</h2>
+  
+  <!-- El número que irá cambiando -->
+  <div class="display" id="contador-valor">Cargando...</div>
+
+  <div class="botones">
+    <button id="btn-restar" class="btn">- Disminuir</button>
+    <button id="btn-sumar" class="btn">+ Aumentar</button>
+  </div>
+</div>
+
+<script>
+  // TODO ESTE SCRIPT CORRE EN EL NAVEGADOR DEL USUARIO (CLIENTE)
+  const API_URL = 'http://localhost:3000/api/contador';
+  
+  let valorActual = 0;
+
+  // Capturamos los elementos del HTML usando el DOM
+  const display = document.getElementById('contador-valor');
+  const btnSumar = document.getElementById('btn-sumar');
+  const btnRestar = document.getElementById('btn-restar');
+
+  // Función 1: Obtener el valor inicial desde el Backend (Go)
+  async function obtenerContadorInicial() {
+    try {
+      const respuesta = await fetch(API_URL);
+      if (respuesta.ok) {
+        const datos = await respuesta.json();
+        valorActual = datos.valor;
+        actualizarPantalla();
+      } else {
+        display.textContent = "Error al cargar";
+      }
+    } catch (error) {
+      console.error("No se pudo conectar con el backend en Go:", error);
+      display.textContent = "Backend desconectado";
+    }
+  }
+
+  // Función 2: Enviar el nuevo valor modificado al Backend (Go)
+  async function sincronizarConBackend(nuevoValor) {
+    try {
+      await fetch(`${API_URL}/actualizar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valor: nuevoValor })
+      });
+    } catch (error) {
+      console.error("Error al sincronizar el click:", error);
+    }
+  }
+
+  // Función 3: Renderizar el valor en la pantalla
+  function actualizarPantalla() {
+    if (display) {
+      display.textContent = valorActual.toString();
+    }
+  }
+
+  // --- ESCUCHADORES DE CLICKS (Event Listeners) ---
+
+  btnSumar?.addEventListener('click', async () => {
+    valorActual++;
+    actualizarPantalla(); // Cambia instantáneamente para que el usuario no sienta lag
+    await sincronizarConBackend(valorActual); // Lo manda a guardar a Go en segundo plano
+  });
+
+  btnRestar?.addEventListener('click', async () => {
+    valorActual--;
+    actualizarPantalla();
+    await sincronizarConBackend(valorActual);
+  });
+
+  // Arrancar la app pidiendo el número inicial al backend en cuanto cargue la página
+  obtenerContadorInicial();
+</script>
+
+<style>
+  /* Unos estilos sencillos para que no se vea feo */
+  .contador-container {
+    background: #1e1e24;
+    color: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    font-family: system-ui, sans-serif;
+    width: 300px;
+  }
+  .display {
+    font-size: 3.5rem;
+    font-weight: bold;
+    margin: 1.5rem 0;
+    color: #00ffcc;
+  }
+  .botones {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+  .btn {
+    background: #333;
+    color: white;
+    border: 2px solid #555;
+    padding: 0.7rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:hover {
+    background: #00ffcc;
+    color: #000;
+    border-color: #00ffcc;
+  }
+</style>

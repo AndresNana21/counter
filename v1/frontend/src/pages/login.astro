@@ -1,0 +1,128 @@
+---
+// Aquí va el código de servidor de Astro (Frontmatter)
+// Como es una SPA simple para entender el flujo, lo manejaremos todo en el cliente.
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Prueba JWT con Astro</title>
+    <style>
+      body { font-family: sans-serif; padding: 2rem; background: #13151a; color: white; }
+      button { background: #4f46e5; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; margin-right: 0.5rem; }
+      button:hover { background: #4338ca; }
+      .box { border: 1px solid #334155; padding: 1rem; border-radius: 8px; margin-top: 1rem; background: #1e293b; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <h1>Ejemplo de Autenticación con JWT</h1>
+
+    <div id="logged-out-zone">
+      <p>No has iniciado sesión.</p>
+      <button id="btn-login">Iniciar Sesión (Simular)</button>
+    </div>
+
+    <div id="logged-in-zone" class="hidden">
+      <p>¡Estás logeado!</p>
+      <p><strong>Tu Token:</strong> <span id="token-display" style="word-break: break-all; color: #38bdf8;"></span></p>
+      
+      <button id="btn-profile">Pedir Datos Protegidos</button>
+      <button id="btn-logout" style="background: #dc2626;">Cerrar Sesión</button>
+
+      <div id="profile-data" class="box hidden">
+        <h3>Datos devueltos por el Backend:</h3>
+        <pre id="backend-response"></pre>
+      </div>
+    </div>
+
+    <script>
+      // 1. Referencias a los elementos del DOM
+      const loggedOutZone = document.getElementById('logged-out-zone');
+      const loggedInZone = document.getElementById('logged-in-zone');
+      const btnLogin = document.getElementById('btn-login');
+      const btnLogout = document.getElementById('btn-logout');
+      const btnProfile = document.getElementById('btn-profile');
+      const tokenDisplay = document.getElementById('token-display');
+      const profileData = document.getElementById('profile-data');
+      const backendResponse = document.getElementById('backend-response');
+
+      // URL de tu backend (cámbiala por la de tu servidor Go, ej: http://localhost:8080)
+      const BACKEND_URL = 'http://localhost:8080/api'; 
+
+      // 2. Función para actualizar la interfaz según si hay token o no
+      function checkAuth() {
+        const token = localStorage.getItem('jwt_token');
+        
+        if (token) {
+          loggedOutZone.classList.add('hidden');
+          loggedInZone.classList.remove('hidden');
+          tokenDisplay.innerText = token;
+        } else {
+          loggedOutZone.classList.remove('hidden');
+          loggedInZone.classList.add('hidden');
+          profileData.classList.add('hidden');
+        }
+      }
+
+      // 3. EVENTO: Iniciar Sesión (Enviar datos y RECIBIR el token)
+      btnLogin?.addEventListener('click', async () => {
+        try {
+          // Aquí enviarías los datos reales (o el token que te dé Google Auth)
+          const response = await fetch(`${BACKEND_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: 'nana',
+              password: 'password123' // En producción esto viaja encriptado por HTTPS
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.token) {
+            // ¡AQUÍ RECIBES EL TOKEN! Lo guardas en el localStorage del navegador
+            localStorage.setItem('jwt_token', data.token);
+            checkAuth(); // Refrescar la pantalla
+          } else {
+            alert('Error al logearse: ' + data.error);
+          }
+        } catch (error) {
+          console.error('Error de conexión:', error);
+          alert('No se pudo conectar con el backend.');
+        }
+      });
+
+      // 4. EVENTO: Pedir datos privados (ENVIAR el token de vuelta)
+      btnProfile?.addEventListener('click', async () => {
+        const token = localStorage.getItem('jwt_token');
+
+        try {
+          const response = await fetch(`${BACKEND_URL}/profile`, {
+            method: 'GET',
+            headers: {
+              // AQUÍ ENVÍAS EL TOKEN en la cabecera "Authorization"
+              // El formato estándar es: Bearer <tu_token>
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          const data = await response.json();
+          profileData.classList.remove('hidden');
+          backendResponse.innerText = JSON.stringify(data, null, 2);
+        } catch (error) {
+          alert('Error al pedir datos protegidos');
+        }
+      });
+
+      // 5. EVENTO: Cerrar Sesión (Borrar el token)
+      btnLogout?.addEventListener('click', () => {
+        localStorage.removeItem('jwt_token');
+        checkAuth();
+      });
+
+      // Al cargar la página, comprobar si ya estábamos logeados
+      checkAuth();
+    </script>
+  </body>
+</html>

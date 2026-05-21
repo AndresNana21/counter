@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  mysql_db:
+    image: mysql:8.0
+    container_name: clickforge_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: tu_password_secreto
+      # LA MAGIA: Docker creará este contenedor de BD automáticamente al arrancar
+      MYSQL_DATABASE: clickforge_db
+      MYSQL_USER: clickforge_user
+      MYSQL_PASSWORD: clickforge_user_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

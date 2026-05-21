@@ -1,0 +1,103 @@
+---
+// src/pages/login2.astro
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Login Corto - Info Completa</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      body { font-family: sans-serif; padding: 2rem; background: #13151a; color: white; }
+      .box { background: #1e293b; padding: 1.5rem; border-radius: 8px; margin-top: 1rem; max-width: 650px; }
+      pre { background: #0f172a; padding: 1rem; border-radius: 6px; overflow-x: auto; color: #38bdf8; }
+      .user-card { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+      .user-card img { border-radius: 50%; border: 2px solid #4f46e5; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+
+    <h1>Iniciar Sesión con Google</h1>
+    
+    <div id="zona-boton">
+      <p>Haz clic abajo para identificarte:</p>
+      <div id="boton-google"></div>
+    </div>
+
+    <div id="zona-usuario" class="hidden">
+      <h2>¡Inicio de Sesión Exitoso!</h2>
+      
+      <div class="box">
+        <h3>Perfil obtenido desde el Token:</h3>
+        <div class="user-card">
+          <img id="user-picture" src="" alt="Foto de perfil" width="50" height="50" />
+          <div>
+            <h4 id="user-name" style="margin: 0;"></h4>
+            <p id="user-email" style="margin: 0; color: #94a3b8;"></p>
+          </div>
+        </div>
+
+        <h3>Datos crudos que venían dentro del JWT:</h3>
+        <pre id="json-display"></pre>
+      </div>
+    </div>
+
+    <script>
+      // Función para decodificar el JWT de Google en el cliente de forma simple
+      function parseJwt(token) {
+        try {
+          const base64Url = token.split('.')[1]; // Agarramos la segunda parte del token (Payload)
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+
+          return JSON.parse(jsonPayload);
+        } catch(e) {
+          return null;
+        }
+      }
+
+      // @ts-ignore
+      window.handleCredentialResponse = function(response) {
+        const googleToken = response.credential;
+        
+        // 1. Decodificamos el token para ver qué hay dentro
+        const datosUsuario = parseJwt(googleToken);
+        
+        if (datosUsuario) {
+          // Ocultamos el botón y mostramos la info
+          document.getElementById('zona-boton')?.classList.add('hidden');
+          document.getElementById('zona-usuario')?.classList.remove('hidden');
+
+          // Pintamos los datos en la interfaz
+          // @ts-ignore
+          document.getElementById('user-picture').src = datosUsuario.picture;
+          // @ts-ignore
+          document.getElementById('user-name').innerText = datosUsuario.name;
+          // @ts-ignore
+          document.getElementById('user-email').innerText = datosUsuario.email;
+          
+          // Mostramos el JSON completo en la pantalla
+          // @ts-ignore
+          document.getElementById('json-display').innerText = JSON.stringify(datosUsuario, null, 2);
+        }
+      };
+
+      window.onload = function () {
+        // @ts-ignore
+        google.accounts.id.initialize({
+          client_id: "925966888658-vuk7iojmno4s7vslu4sbdrvap81n9s51.apps.googleusercontent.com",
+          callback: window.handleCredentialResponse
+        });
+
+        // @ts-ignore
+        google.accounts.id.renderButton(
+          document.getElementById("boton-google"),
+          { theme: "outline", size: "large" }
+        );
+      };
+    </script>
+  </body>
+</html>
